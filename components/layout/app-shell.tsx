@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Bell,
   CheckCircle2,
@@ -21,8 +21,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 
 const sideNavItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Analytics", href: "/analytics", icon: LineChart },
-  { label: "Ecosystem", href: "/ecosystem", icon: Globe },
+  { label: "Deep Analytics", href: "/?tab=analytics", icon: LineChart },
+  { label: "Ecosystem", href: "/?tab=ecosystem", icon: Globe },
 ];
 
 /* ─────────────────────────────────────────────
@@ -95,6 +95,8 @@ function NotificationsModal({ open, onClose }: { open: boolean; onClose: () => v
 ───────────────────────────────────────────── */
 function Sidebar({ open, onClose, onOpenNotifications }: { open: boolean; onClose: () => void; onOpenNotifications: () => void }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get("tab") || "terminal";
 
   return (
     <>
@@ -140,7 +142,17 @@ function Sidebar({ open, onClose, onOpenNotifications }: { open: boolean; onClos
         <nav className="flex flex-col gap-1 px-3">
           <p className="mb-1 px-2 font-heading text-[10px] font-semibold tracking-[0.12em] uppercase" style={{ color: "#9ea0aa" }}>Navigation</p>
           {sideNavItems.map(({ label, href, icon: Icon }) => {
-            const active = pathname === href;
+            const isHome = href === "/";
+            const isAnalyticsTab = href.includes("tab=analytics");
+            const isEcosystemTab = href.includes("tab=ecosystem");
+            const active = isHome 
+              ? (pathname === "/" && activeTab === "terminal")
+              : isAnalyticsTab 
+                ? (pathname === "/" && activeTab === "analytics")
+                : isEcosystemTab
+                  ? (pathname === "/" && activeTab === "ecosystem")
+                  : pathname === href;
+
             return (
               <Link
                 key={label} href={href} onClick={onClose}
@@ -189,6 +201,8 @@ function Sidebar({ open, onClose, onOpenNotifications }: { open: boolean; onClos
 ───────────────────────────────────────────── */
 function TopBar({ onMenuOpen, onOpenNotifications }: { onMenuOpen: () => void; onOpenNotifications: () => void }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get("tab") || "terminal";
 
   return (
     <header className="relative z-40 flex items-center justify-between gap-4 rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5" style={{ background: "rgba(26,27,33,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
@@ -204,7 +218,17 @@ function TopBar({ onMenuOpen, onOpenNotifications }: { onMenuOpen: () => void; o
 
         <nav className="hidden items-center gap-1 text-sm lg:flex">
           {sideNavItems.map(({ label, href }) => {
-            const active = pathname === href;
+            const isHome = href === "/";
+            const isAnalyticsTab = href.includes("tab=analytics");
+            const isEcosystemTab = href.includes("tab=ecosystem");
+            const active = isHome 
+              ? (pathname === "/" && activeTab === "terminal")
+              : isAnalyticsTab 
+                ? (pathname === "/" && activeTab === "analytics")
+                : isEcosystemTab
+                  ? (pathname === "/" && activeTab === "ecosystem")
+                  : pathname === href;
+
             return (
               <Link key={label} href={href} className="rounded-lg px-3 py-1.5 font-heading text-sm font-medium tracking-wide transition-all hover:bg-white/5" style={active ? { background: "rgba(153,69,255,0.12)", color: "#9945ff" } : { color: "#9ea0aa" }}>
                 {label}

@@ -7,6 +7,7 @@ import {
   Activity,
   AlertTriangle,
   ArrowRight,
+  BarChart3,
   ChartNoAxesCombined,
   CircleAlert,
   Compass,
@@ -17,7 +18,10 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { GlassCard } from "@/components/ui/glass-card";
+import { AnalyticsView } from "@/components/analytics/analytics-view";
+import { EcosystemView } from "@/components/ecosystem/ecosystem-view";
 
 /* ─────────────────────────────────────────────
    Types
@@ -45,18 +49,18 @@ type Transaction = {
    Static data (Initial mock fallback)
 ───────────────────────────────────────────── */
 const protocolRows: ProtocolRow[] = [
-  { name: "Jupiter",    activity: 42, value: "$840M", color: "#9945ff" },
-  { name: "Raydium",   activity: 28, value: "$560M", color: "#00ec91" },
-  { name: "Orca",      activity: 15, value: "$300M", color: "#9945ff" },
-  { name: "Tensor",    activity: 10, value: "$200M", color: "#00ec91" },
-  { name: "Magic Eden",activity:  5, value: "$100M", color: "#9945ff" },
+  { name: "Jupiter", activity: 42, value: "$840M", color: "#9945ff" },
+  { name: "Raydium", activity: 28, value: "$560M", color: "#00ec91" },
+  { name: "Orca", activity: 15, value: "$300M", color: "#9945ff" },
+  { name: "Tensor", activity: 10, value: "$200M", color: "#00ec91" },
+  { name: "Magic Eden", activity: 5, value: "$100M", color: "#9945ff" },
 ];
 
 const initialTransactions: Transaction[] = [
-  { id: "mock-1", type: "Swap",     protocol: "Jupiter", description: "User swapped 500 SOL for USDC",        value: "$71,320.00",  address: "7xR...9wL", time: "Just now" },
-  { id: "mock-2", type: "Mint",     protocol: "Tensor",  description: "Mad Lads #4202 Minted",                value: "$22,450.00",  address: "H4p...K3S", time: "12s ago"  },
-  { id: "mock-3", type: "Transfer", protocol: "Native",  description: "Transfer of 1,200 SOL to Binance",     value: "$171,168.00", address: "Bin...001", time: "45s ago"  },
-  { id: "mock-4", type: "Swap",     protocol: "Raydium", description: "Swapped 15.4M $BONK for SOL",          value: "$1,450.00",   address: "Dge...666", time: "1m ago"   },
+  { id: "mock-1", type: "Swap", protocol: "Jupiter", description: "User swapped 500 SOL for USDC", value: "$71,320.00", address: "7xR...9wL", time: "Just now" },
+  { id: "mock-2", type: "Mint", protocol: "Tensor", description: "Mad Lads #4202 Minted", value: "$22,450.00", address: "H4p...K3S", time: "12s ago" },
+  { id: "mock-3", type: "Transfer", protocol: "Native", description: "Transfer of 1,200 SOL to Binance", value: "$171,168.00", address: "Bin...001", time: "45s ago" },
+  { id: "mock-4", type: "Swap", protocol: "Raydium", description: "Swapped 15.4M $BONK for SOL", value: "$1,450.00", address: "Dge...666", time: "1m ago" },
 ];
 
 const solCandles = [
@@ -97,7 +101,7 @@ function useSmoothNumber(value: number, duration = 400) {
     function animate(currentTime: number) {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
+
       // Linear interpolation
       const nextValue = startValue + (value - startValue) * progress;
       setDisplay(Math.round(nextValue));
@@ -144,7 +148,7 @@ const CardTPS = memo(({ tps }: { tps: number }) => {
     <GlassCard>
       <div className="flex flex-col gap-3 p-5">
         <CardTopRow label="Transactions per sec" icon={<Zap className="size-4" />} iconColor="#00ec91" />
-        
+
         <div className="flex flex-col gap-1">
           <div className="flex items-baseline gap-2">
             <p className="font-heading text-5xl font-bold leading-none tabular-nums" style={{ color: "#ebecf0" }}>
@@ -158,10 +162,10 @@ const CardTPS = memo(({ tps }: { tps: number }) => {
         </div>
 
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
-          <div 
+          <div
             className="h-full rounded-full transition-all duration-300"
-            style={{ 
-              width: `${percentage}%`, 
+            style={{
+              width: `${percentage}%`,
               background: "linear-gradient(90deg, #00ec91, #14f195, #9945ff)",
               boxShadow: smoothTPS > 4000 ? "0 0 12px rgba(0, 236, 145, 0.3)" : "none"
             }}
@@ -173,9 +177,9 @@ const CardTPS = memo(({ tps }: { tps: number }) => {
 });
 CardTPS.displayName = "CardTPS";
 
-function CardActivePrograms({ count, topProtocols = [] }: { 
-  count: number; 
-  topProtocols?: Array<{ initials: string; share: number; name: string }> 
+function CardActivePrograms({ count, topProtocols = [] }: {
+  count: number;
+  topProtocols?: Array<{ initials: string; share: number; name: string }>
 }) {
   return (
     <GlassCard>
@@ -192,19 +196,19 @@ function CardActivePrograms({ count, topProtocols = [] }: {
             </p>
           )}
         </div>
-        
+
         <div className="mt-1 flex items-center">
           {topProtocols.map((p, i) => (
             <span
               key={p.name}
               className="flex size-6 items-center justify-center rounded-full font-heading text-[9px] font-bold"
-              style={{ 
-                background: "#1e1f25", 
-                color: i === 0 ? "#ebecf0" : "#9ea0aa", 
-                outline: `1.5px solid ${i === 0 ? "rgba(153,69,255,0.4)" : "rgba(158,160,170,0.18)"}`, 
-                marginLeft: i === 0 ? 0 : "-6px", 
-                zIndex: topProtocols.length - i, 
-                position: "relative" 
+              style={{
+                background: "#1e1f25",
+                color: i === 0 ? "#ebecf0" : "#9ea0aa",
+                outline: `1.5px solid ${i === 0 ? "rgba(153,69,255,0.4)" : "rgba(158,160,170,0.18)"}`,
+                marginLeft: i === 0 ? 0 : "-6px",
+                zIndex: topProtocols.length - i,
+                position: "relative"
               }}
               title={p.name}
             >
@@ -233,8 +237,8 @@ function getWhaleLabel(lastWhaleTime: number | null, count: number): string {
   return "Last 1m";
 }
 
-function CardWhaleAlerts({ count, lastWhaleTime, volumeIn, volumeOut, totalVolume }: { 
-  count: number; 
+function CardWhaleAlerts({ count, lastWhaleTime, volumeIn, volumeOut, totalVolume }: {
+  count: number;
   lastWhaleTime: number | null;
   volumeIn: number;
   volumeOut: number;
@@ -257,7 +261,7 @@ function CardWhaleAlerts({ count, lastWhaleTime, volumeIn, volumeOut, totalVolum
         <div className="flex flex-col gap-1">
           <div className="flex items-baseline gap-2">
             <p className="font-heading text-4xl font-bold leading-none tabular-nums" style={{ color: "#ebecf0" }}>
-                {formatter.format(totalVolume)}
+              {formatter.format(totalVolume)}
             </p>
             <span className="font-heading text-xs font-semibold" style={{ color: count > 0 ? "#00ec91" : "#9ea0aa" }}>{label}</span>
           </div>
@@ -265,7 +269,7 @@ function CardWhaleAlerts({ count, lastWhaleTime, volumeIn, volumeOut, totalVolum
             {count} whale signals detected
           </p>
         </div>
-        
+
         <div className="mt-1 flex items-center justify-between border-t border-white/5 pt-3">
           <div className="flex flex-col">
             <span className="font-heading text-[9px] font-bold uppercase tracking-widest" style={{ color: "#9ea0aa" }}>Inflow</span>
@@ -285,8 +289,8 @@ function CardWhaleAlerts({ count, lastWhaleTime, volumeIn, volumeOut, totalVolum
 // Each card manages its own buffer + flush to isolate re-renders.
 
 const CardTPSWrapper = memo(({ worker }: { worker: Worker | null }) => {
-  const [tps, setTps] = useState(2450);
-  const bufferRef = useRef(2450);
+  const [tps, setTps] = useState(0);
+  const bufferRef = useRef(0);
 
   useEffect(() => {
     if (!worker) return;
@@ -303,11 +307,11 @@ const CardTPSWrapper = memo(({ worker }: { worker: Worker | null }) => {
 });
 
 const CardSlotWrapper = memo(({ worker }: { worker: Worker | null }) => {
-  const slotTimeRef = useRef(400);
+  const slotTimeRef = useRef(0);
   const windowBufferRef = useRef<number[]>([]);
   const [display, setDisplay] = useState({
-    slotTime: 400,
-    bars: [400, 400, 400, 400, 400, 400, 400] as number[],
+    slotTime: 0,
+    bars: [0, 0, 0, 0, 0, 0, 0] as number[],
   });
 
   useEffect(() => {
@@ -316,10 +320,10 @@ const CardSlotWrapper = memo(({ worker }: { worker: Worker | null }) => {
     const handler = (e: MessageEvent) => {
       if (e.data.type !== "SLOT_UPDATE") return;
       const ms = e.data.slotTimeMs || 400;
-      
+
       const isMobile = window.innerWidth < 1024;
       const alpha = isMobile ? 0.35 : 0.25; // Faster response on mobile pulsars
-      
+
       slotTimeRef.current = slotTimeRef.current + alpha * (ms - slotTimeRef.current);
       windowBufferRef.current.push(ms);
     };
@@ -330,15 +334,15 @@ const CardSlotWrapper = memo(({ worker }: { worker: Worker | null }) => {
     const pulsar = setInterval(() => {
       setDisplay(prev => {
         const smoothed = Math.round(slotTimeRef.current);
-        
+
         // Calculate the average of this window to ensure bars match the number's signal
         const windowData = windowBufferRef.current;
-        const windowAvg = windowData.length > 0 
-          ? windowData.reduce((a, b) => a + b, 0) / windowData.length 
+        const windowAvg = windowData.length > 0
+          ? windowData.reduce((a, b) => a + b, 0) / windowData.length
           : slotTimeRef.current;
-        
+
         windowBufferRef.current = []; // Reset for next window
-        
+
         const newBars = [...prev.bars.slice(-6), windowAvg];
         return { slotTime: smoothed, bars: newBars };
       });
@@ -351,9 +355,9 @@ const CardSlotWrapper = memo(({ worker }: { worker: Worker | null }) => {
   }, [worker]);
 
   const status =
-    display.slotTime < 420 ? { label: "Fast",      color: "#00ec91" } :
-    display.slotTime < 480 ? { label: "Normal",    color: "#facc15" } :
-                             { label: "Congested", color: "#ef4444" };
+    display.slotTime < 420 ? { label: "Fast", color: "#00ec91" } :
+      display.slotTime < 480 ? { label: "Normal", color: "#facc15" } :
+        { label: "Congested", color: "#ef4444" };
 
   return (
     <GlassCard>
@@ -492,74 +496,89 @@ const MarketChart = memo(() => {
 
     const candleSeries = chart.addSeries(CandlestickSeries, { upColor: "#00ec91", downColor: "#de3337", borderUpColor: "#00ec91", borderDownColor: "#de3337", wickUpColor: "rgba(0,236,145,0.6)", wickDownColor: "rgba(222,51,55,0.6)" });
     candleSeriesRef.current = candleSeries;
-    
+
+    let isDisposed = false;
+
+    const ro = new ResizeObserver(() => {
+      if (!isDisposed && container.clientWidth > 0) {
+        try {
+          chart.applyOptions({ width: container.clientWidth });
+        } catch (e) { }
+      }
+    });
+    ro.observe(container);
+
     // Fetch live OHLC from CoinGecko
     const fetchOHLC = () => {
+      if (isDisposed) return;
       fetch("https://api.coingecko.com/api/v3/coins/solana/ohlc?vs_currency=usd&days=1")
         .then(res => res.json())
         .then((data: [number, number, number, number, number][]) => {
-           if (data && Array.isArray(data)) {
-              const formatted = data.map(d => ({
-                 time: (Math.floor(d[0] / 1000)) as any,
-                 open: d[1],
-                 high: d[2],
-                 low: d[3],
-                 close: d[4]
-              })).sort((a, b) => a.time - b.time);
-              
-              const unique = Array.from(new Map(formatted.map(item => [item.time, item])).values());
-              candleSeries.setData(unique);
-              chart.timeScale().fitContent();
+          if (isDisposed || !data || !Array.isArray(data)) return;
+          const formatted = data.map(d => ({
+            time: (Math.floor(d[0] / 1000)) as any,
+            open: d[1],
+            high: d[2],
+            low: d[3],
+            close: d[4]
+          })).sort((a, b) => a.time - b.time);
 
-              if (unique.length > 0) {
-                 lastCandleRef.current = { ...unique[unique.length - 1] };
-              }
-           }
+          const unique = Array.from(new Map(formatted.map(item => [item.time, item])).values());
+          candleSeries.setData(unique);
+          chart.timeScale().fitContent();
+
+          if (unique.length > 0) {
+            lastCandleRef.current = { ...unique[unique.length - 1] };
+          }
         })
         .catch((err) => {
-           console.warn("CoinGecko OHLC API rate limited, using fallback");
-           candleSeries.setData(solCandles);
-           lastCandleRef.current = { ...solCandles[solCandles.length - 1] };
+          if (isDisposed) return;
+          console.warn("CoinGecko OHLC API rate limited, using fallback");
+          candleSeries.setData(solCandles);
+          lastCandleRef.current = { ...solCandles[solCandles.length - 1] };
         });
     };
 
     // Fetch instantaneous live ticker price
     const fetchLivePrice = () => {
-      fetch("/api/price")
-        .then(res => res.json())
-        .then(data => {
-           if (data?.price) {
-               const price = data.price;
-               setLivePrice(price);
-               if (data.change24h) setLiveChange(data.change24h);
-               
-               // LIVE TICK UPDATE: Sync the latest candle on the chart with the ticker price
-               if (candleSeriesRef.current && lastCandleRef.current) {
-                  const last = lastCandleRef.current;
-                  last.close = price;
-                  if (price > last.high) last.high = price;
-                  if (price < last.low) last.low = price;
-                  
-                  candleSeriesRef.current.update(last);
-               }
-           }
-        })
-        .catch(console.error);
+      if (isDisposed) return;
+      try {
+        fetch("/api/price")
+          .then(res => res.json())
+          .then(data => {
+            if (isDisposed || !data?.price) return;
+            const price = data.price;
+            setLivePrice(price);
+            if (data.change24h) setLiveChange(data.change24h);
+
+            if (candleSeriesRef.current && lastCandleRef.current) {
+              const last = lastCandleRef.current;
+              last.close = price;
+              if (price > last.high) last.high = price;
+              if (price < last.low) last.low = price;
+              candleSeriesRef.current.update(last);
+            }
+          })
+          .catch(() => { /* Silence transient local fetch errors */ });
+      } catch (e) {
+        /* Silence synchronous fetch errors */
+      }
     };
 
     fetchOHLC();
     fetchLivePrice();
 
-    const ohlcInterval = setInterval(fetchOHLC, 60000); // Refresh candles every 1m
-    const priceInterval = setInterval(fetchLivePrice, 15000); // Check accurate price every 15s
+    const ohlcInterval = setInterval(fetchOHLC, 60000);
+    const priceInterval = setInterval(fetchLivePrice, 15000);
 
-    const ro = new ResizeObserver(() => { chart.applyOptions({ width: container.clientWidth }); });
-    ro.observe(container);
-    return () => { 
-        ro.disconnect(); 
-        chart.remove(); 
-        clearInterval(ohlcInterval);
-        clearInterval(priceInterval);
+    return () => {
+      isDisposed = true;
+      ro.disconnect();
+      try {
+        chart.remove();
+      } catch (e) { }
+      clearInterval(ohlcInterval);
+      clearInterval(priceInterval);
     };
   }, []);
 
@@ -612,9 +631,9 @@ const ProtocolActivity = memo(({ worker }: { worker: Worker | null }) => {
         setProtocolVolumes(payload);
       } else if (type === "METRICS_UPDATE") {
         setTpsHistory(prev => {
-           const next = [...prev, payload.tps];
-           if (next.length > 7) next.shift();
-           return next;
+          const next = [...prev, payload.tps];
+          if (next.length > 7) next.shift();
+          return next;
         });
       }
     };
@@ -627,10 +646,10 @@ const ProtocolActivity = memo(({ worker }: { worker: Worker | null }) => {
   const sorted = Object.entries(volumes)
     .sort((a, b) => b[1] - a[1]) // highest first
     .map(([name, val]) => ({
-       name,
-       activity: Math.round((val / totalVol) * 100) || 0,
-       value: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(val),
-       color: "#9945ff"
+      name,
+      activity: Math.round((val / totalVol) * 100) || 0,
+      value: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(val),
+      color: "#9945ff"
     })).filter(x => x.activity > 0);
 
   const displayRows = sorted.length > 0 ? sorted : protocolRows;
@@ -639,17 +658,17 @@ const ProtocolActivity = memo(({ worker }: { worker: Worker | null }) => {
   const currentTps = tpsHistory[tpsHistory.length - 1] || 0;
   let status = "LOW";
   let statusColor = "#00ec91";
-  
+
   if (currentTps > 6500) {
-     status = "HIGH";
-     statusColor = "#de3337"; // red
+    status = "HIGH";
+    statusColor = "#de3337"; // red
   } else if (currentTps > 4500) {
-     status = "MED";
-     statusColor = "#eab308"; // yellow
+    status = "MED";
+    statusColor = "#eab308"; // yellow
   }
 
   // Ensure we always map exactly 7 blocks
-  const blocks = tpsHistory.length === 7 ? tpsHistory : [0,0,0,0,0,0,0];
+  const blocks = tpsHistory.length === 7 ? tpsHistory : [0, 0, 0, 0, 0, 0, 0];
 
   return (
     <GlassCard className="h-full">
@@ -684,7 +703,7 @@ const ProtocolActivity = memo(({ worker }: { worker: Worker | null }) => {
               // Map realistic TPS values (0 to ~8000) into a visual opacity between 0.1 and 1.0
               const intensity = Math.max(0.10, Math.min(1.0, v / 7500));
               return (
-                 <div key={i} className="aspect-square rounded-sm transition-all duration-500" style={{ background: `rgba(0,236,145,${intensity})` }} />
+                <div key={i} className="aspect-square rounded-sm transition-all duration-500" style={{ background: `rgba(0,236,145,${intensity})` }} />
               );
             })}
           </div>
@@ -709,9 +728,9 @@ const AlertStrip = memo(({ worker }: { worker: Worker | null }) => {
     const handleMessage = (e: MessageEvent) => {
       if (e.data.type === "WHALE_ALERT") {
         setAlerts(prev => {
-           // Add new alert to the start, keep only last 5
-           const next = [e.data.tx, ...prev].slice(0, 5);
-           return next;
+          // Add new alert to the start, keep only last 5
+          const next = [e.data.tx, ...prev].slice(0, 5);
+          return next;
         });
       }
     };
@@ -720,8 +739,8 @@ const AlertStrip = memo(({ worker }: { worker: Worker | null }) => {
   }, [worker]);
 
   const severityThemes = useMemo(() => ({
-    mega:   { bg: "linear-gradient(90deg, rgba(222,51,55,0.15), rgba(153,69,255,0.15))", border: "rgba(222,51,55,0.3)",  color: "#de3337", label: "MEGA WHALE", icon: <Flame className="size-4 animate-pulse" /> },
-    large:  { bg: "rgba(222,51,55,0.10)", border: "rgba(222,51,55,0.2)",  color: "#de3337", label: "WHALE", icon: <Siren className="size-4" /> },
+    mega: { bg: "linear-gradient(90deg, rgba(222,51,55,0.15), rgba(153,69,255,0.15))", border: "rgba(222,51,55,0.3)", color: "#de3337", label: "MEGA WHALE", icon: <Flame className="size-4 animate-pulse" /> },
+    large: { bg: "rgba(222,51,55,0.10)", border: "rgba(222,51,55,0.2)", color: "#de3337", label: "WHALE", icon: <Siren className="size-4" /> },
     normal: { bg: "rgba(153,69,255,0.07)", border: "rgba(153,69,255,0.15)", color: "#9945ff", label: "LARGE TRADE", icon: <AlertTriangle className="size-4" /> },
   }), []);
 
@@ -744,11 +763,11 @@ const AlertStrip = memo(({ worker }: { worker: Worker | null }) => {
           <div
             key={alert.rawSignature || alert.id}
             className="flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 animate-in fade-in slide-in-from-top-2 duration-500 ease-out"
-            style={{ 
-              background: theme.bg, 
+            style={{
+              background: theme.bg,
               outline: `1px solid ${theme.border}`,
               opacity: Math.max(0.4, 1 - (idx * 0.15)),
-              transform: `scale(${1 - (idx * 0.02)}) translateY(${idx * 2}px)`, 
+              transform: `scale(${1 - (idx * 0.02)}) translateY(${idx * 2}px)`,
               zIndex: 10 - idx,
               transition: "all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1)"
             }}
@@ -778,9 +797,9 @@ AlertStrip.displayName = "AlertStrip";
 ───────────────────────────────────────────── */
 function TypeBadge({ type }: { type: Transaction["type"] }) {
   const map: Record<Transaction["type"], { bg: string; color: string }> = {
-    Swap:     { bg: "rgba(0,236,145,0.10)",  color: "#00ec91" },
-    Mint:     { bg: "rgba(153,69,255,0.14)", color: "#9945ff" },
-    Transfer: { bg: "rgba(222,51,55,0.10)",  color: "#de3337" },
+    Swap: { bg: "rgba(0,236,145,0.10)", color: "#00ec91" },
+    Mint: { bg: "rgba(153,69,255,0.14)", color: "#9945ff" },
+    Transfer: { bg: "rgba(222,51,55,0.10)", color: "#de3337" },
   };
   const s = map[type];
   return (
@@ -980,10 +999,17 @@ TransactionFeed.displayName = "TransactionFeed";
    Root export
 ───────────────────────────────────────────── */
 export function Dashboard() {
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get("tab");
+  const activeView = activeTab === "analytics" ? "analytics" : activeTab === "ecosystem" ? "ecosystem" : "terminal";
   const [activeFilter, setActiveFilter] = useState<"smart" | "all">("smart");
   const [isPaused, setIsPaused] = useState(false);
   const [worker, setWorker] = useState<Worker | null>(null);
   const isPausedRef = useRef(isPaused);
+
+  // Persistent Session Analytics State (survives tab switching)
+  const [liveVolume, setLiveVolume] = useState<Record<string, number>>({});
+  const [globalStats, setGlobalStats] = useState({ totalVol: "$0", activeCount: 0 });
 
   // Point 2: Stabilize function references with useCallback so the memoized Feed doesn't re-render
   const togglePause = useCallback(() => {
@@ -994,19 +1020,46 @@ export function Dashboard() {
   const changeFilter = useCallback((f: "smart" | "all") => {
     setActiveFilter(f);
     if (worker) {
-        worker.postMessage({ type: "SET_FILTER", payload: f });
+      worker.postMessage({ type: "SET_FILTER", payload: f });
     }
   }, [worker]);
 
   useEffect(() => {
+    if (!worker) return;
+
+    const handleMessage = (e: MessageEvent) => {
+      const { type, payload } = e.data;
+
+      // Persist these in Dashboard state so AnalyticsView doesn't reset on remount
+      if (type === "PROTOCOL_VOLUME") {
+        setLiveVolume(payload);
+      }
+      if (type === "METRICS_UPDATE") {
+        const totalUsd = payload.whaleVolumeTotal + (payload.tps * 8);
+        setGlobalStats({
+          totalVol: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact" }).format(totalUsd),
+          activeCount: payload.activeCount,
+        });
+      }
+
+      if (type === "CHECK_CONNECTION_SIGNAL") {
+        // handle internal heartbeat
+      }
+    };
+
     const handleVisibilityChange = () => {
       if (!document.hidden && worker) {
-        // Tab came back into focus — tell worker to verify connection immediately
         worker.postMessage({ type: "CHECK_CONNECTION" });
       }
     };
+
+    worker.addEventListener("message", handleMessage);
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      worker.removeEventListener("message", handleMessage);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [worker]);
 
   useEffect(() => {
@@ -1016,15 +1069,15 @@ export function Dashboard() {
       .then((res) => res.json())
       .then((data) => {
         if (!data.url) return;
-        
+
         activeWorker = new Worker(new URL("@/workers/transactionWorker.ts", import.meta.url));
         setWorker(activeWorker);
-        activeWorker.postMessage({ 
-          type: "INIT", 
-          payload: { 
+        activeWorker.postMessage({
+          type: "INIT",
+          payload: {
             wsUrl: data.url,
-            initialFilter: activeFilter 
-          } 
+            initialFilter: activeFilter
+          }
         });
       })
       .catch(console.error);
@@ -1038,23 +1091,52 @@ export function Dashboard() {
   }, []);
 
   return (
-    <>
-      <MetricsRow worker={worker} />
+    <div className="flex flex-col gap-6">
+      {/* ── Dashboard Navigation Header ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1">
+        <div className="hidden items-center gap-2 rounded-2xl p-1 w-fit sm:flex" style={{ color: "#9ea0aa" }}>
+          <span className="font-heading text-xs font-bold uppercase tracking-widest opacity-50">Dashboard / {activeView === "terminal" ? "Live Terminal" : "Deep Analytics"}</span>
+        </div>
 
-      <section className="grid gap-4 lg:grid-cols-[1.9fr_1fr]">
-        <MarketChart />
-        <ProtocolActivity worker={worker} />
-      </section>
+        <div className="flex items-center gap-4 px-2">
+          <div className="flex flex-col items-end">
+            <span className="font-heading text-[10px] font-bold uppercase tracking-widest text-[#9ea0aa]">Network Pulse</span>
+            <span className="font-heading text-xs font-bold text-[#00ec91]">OPERATIONAL</span>
+          </div>
+          <div className="size-2 rounded-full bg-[#00ec91] animate-pulse shadow-[0_0_8px_#00ec91]" />
+        </div>
+      </div>
 
-      <AlertStrip worker={worker} />
-      
-      <TransactionFeed 
-        worker={worker} 
-        isPaused={isPaused} 
-        togglePause={togglePause} 
-        activeFilter={activeFilter} 
-        changeFilter={changeFilter} 
-      />
-    </>
+      <div className="transition-all duration-500">
+        {activeView === "terminal" ? (
+          <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-left-4 duration-500">
+            <MetricsRow worker={worker} />
+
+            <section className="grid gap-4 lg:grid-cols-[1.9fr_1fr]">
+              <MarketChart />
+              <ProtocolActivity worker={worker} />
+            </section>
+
+            <AlertStrip worker={worker} />
+
+            <TransactionFeed
+              worker={worker}
+              isPaused={isPaused}
+              togglePause={togglePause}
+              activeFilter={activeFilter}
+              changeFilter={changeFilter}
+            />
+          </div>
+        ) : activeView === "analytics" ? (
+          <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+            <AnalyticsView worker={worker} liveVolume={liveVolume} globalStats={globalStats} />
+          </div>
+        ) : (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <EcosystemView liveVolume={liveVolume} />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

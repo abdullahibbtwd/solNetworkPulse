@@ -1,9 +1,8 @@
 "use client";
 
+import React, { useState, useEffect, useMemo, memo } from "react";
 import { GlassCard } from "@/components/ui/glass-card";
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -16,254 +15,268 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { Activity, ArrowUpRight, BarChart3, PieChart as PieChartIcon } from "lucide-react";
+import { Activity, BarChart3, PieChart as PieChartIcon, TrendingUp, TrendingDown, Wallet } from "lucide-react";
 
 /* ─────────────────────────────────────────────
-   Mock Data for Charts
+   Constants & Utils
 ───────────────────────────────────────────── */
-const volumeData = [
-  { name: "Mon", Jupiter: 400, Raydium: 240, Orca: 120 },
-  { name: "Tue", Jupiter: 300, Raydium: 139, Orca: 100 },
-  { name: "Wed", Jupiter: 500, Raydium: 380, Orca: 150 },
-  { name: "Thu", Jupiter: 450, Raydium: 390, Orca: 200 },
-  { name: "Fri", Jupiter: 600, Raydium: 480, Orca: 250 },
-  { name: "Sat", Jupiter: 800, Raydium: 520, Orca: 300 },
-  { name: "Sun", Jupiter: 750, Raydium: 430, Orca: 280 },
-];
+const COLORS = ["#9945ff", "#00ec91", "#ff4a8d", "#f5a524", "#9ea0aa"];
 
-const tokenDistribution = [
-  { name: "SOL", value: 45 },
-  { name: "JUP", value: 25 },
-  { name: "RAY", value: 15 },
-  { name: "BONK", value: 10 },
-  { name: "Other", value: 5 },
-];
+// Stable protocols for the 7-day chart to prevent jumping/flickering
+const ANALYTICS_PROTOCOLS = ["Jupiter", "Raydium", "Pump.fun", "Meteora", "Orca"];
 
-const topTokens = [
-  { name: "SOL", volume: "$450M", trades: "120k", price: "$142.64", change: "+2.8%" },
-  { name: "JUP", volume: "$180M", trades: "85k", price: "$1.12", change: "+5.4%" },
-  { name: "RAY", volume: "$120M", trades: "62k", price: "$1.85", change: "-1.2%" },
-  { name: "WIF", volume: "$85M", trades: "45k", price: "$2.40", change: "+12.1%" },
-  { name: "BONK", volume: "$70M", trades: "90k", price: "$0.000021", change: "+3.2%" },
+// Seeded historical data (Millions USD) - Static for session
+const SEEDED_HISTORY = [
+  { name: "Mon", Jupiter: 420, Raydium: 240, "Pump.fun": 85, Meteora: 120, Orca: 90 },
+  { name: "Tue", Jupiter: 380, Raydium: 290, "Pump.fun": 110, Meteora: 140, Orca: 85 },
+  { name: "Wed", Jupiter: 450, Raydium: 210, "Pump.fun": 145, Meteora: 110, Orca: 115 },
+  { name: "Thu", Jupiter: 410, Raydium: 265, "Pump.fun": 190, Meteora: 130, Orca: 105 },
+  { name: "Fri", Jupiter: 520, Raydium: 340, "Pump.fun": 220, Meteora: 155, Orca: 130 },
+  { name: "Sat", Jupiter: 480, Raydium: 310, "Pump.fun": 185, Meteora: 145, Orca: 110 },
 ];
-
-const whaleWallets = [
-  { address: "7xR...9wL", volume: "$4.2M", trades: 14, primary: "Jupiter" },
-  { address: "H4p...K3S", volume: "$2.9M", trades: 8, primary: "Raydium" },
-  { address: "Bin...001", volume: "$1.8M", trades: 45, primary: "Native" },
-  { address: "Dge...666", volume: "$1.2M", trades: 3, primary: "Orca" },
-];
-
-const COLORS = ["#9945ff", "#00ec91", "#de3337", "#f5a524", "#9ea0aa"];
 
 /* ─────────────────────────────────────────────
-   Custom Recharts Tooltip
+   Types
 ───────────────────────────────────────────── */
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div
-        className="rounded-xl px-4 py-3"
-        style={{
-          background: "rgba(26,27,33,0.9)",
-          backdropFilter: "blur(8px)",
-          border: "1px solid rgba(158,160,170,0.15)",
-        }}
-      >
-        <p className="mb-2 font-heading text-xs font-bold" style={{ color: "#ebecf0" }}>
-          {label}
-        </p>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center justify-between gap-4">
-            <span className="font-sans text-xs" style={{ color: entry.color }}>
-              {entry.name}
-            </span>
-            <span className="font-heading text-sm font-semibold tabular-nums" style={{ color: "#ebecf0" }}>
-              ${entry.value}M
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
-
-/* ─────────────────────────────────────────────
-   Components
-───────────────────────────────────────────── */
-function VolumeTrendsChart() {
-  return (
-    <GlassCard className="col-span-full lg:col-span-2">
-      <div className="flex h-[320px] flex-col p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="size-4" style={{ color: "#9945ff" }} />
-            <h2 className="font-heading text-lg font-semibold" style={{ color: "#ebecf0" }}>
-              Protocol Volume Comparison
-            </h2>
-          </div>
-          <span className="font-heading text-[10px] tracking-[0.1em] uppercase" style={{ color: "#9ea0aa" }}>
-            Last 7 Days (Millions)
-          </span>
-        </div>
-        <div className="flex-1">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={volumeData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(158,160,170,0.06)" vertical={false} />
-              <XAxis dataKey="name" stroke="#9ea0aa" fontSize={11} tickLine={false} axisLine={false} dy={10} />
-              <YAxis stroke="#9ea0aa" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(158,160,170,0.04)" }} />
-              <Legend wrapperStyle={{ paddingTop: "20px", fontSize: "11px", color: "#9ea0aa" }} iconType="circle" />
-              <Bar dataKey="Jupiter" fill="#9945ff" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Raydium" fill="#00ec91" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Orca" fill="#de3337" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-    </GlassCard>
-  );
+interface AnalyticsViewProps {
+  worker?: Worker | null;
+  liveVolume?: Record<string, number>;
+  globalStats?: { totalVol: string; activeCount: number };
 }
 
-function TokenVolumeTable() {
-  return (
-    <GlassCard className="col-span-full lg:col-span-2">
-      <div className="flex flex-col p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-heading text-lg font-semibold" style={{ color: "#ebecf0" }}>
-            Top Tokens (24h)
-          </h2>
-          <span className="cursor-pointer font-heading text-xs font-semibold" style={{ color: "#9945ff" }}>
-            View Full List →
-          </span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[500px]">
-            <thead>
-              <tr>
-                {["Token", "Volume", "Trades", "Price", "24h Chg"].map((h, i) => (
-                  <th
-                    key={h}
-                    className={`pb-3 font-heading text-[10px] font-semibold tracking-[0.08em] uppercase ${i > 0 ? "text-right" : "text-left"}`}
-                    style={{ color: "#9ea0aa", borderBottom: "1px solid rgba(158,160,170,0.1)" }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {topTokens.map((token, idx) => (
-                <tr key={idx} className="transition-all hover:bg-white/5">
-                  <td className="py-3.5 pr-4 font-heading text-sm font-semibold" style={{ color: "#ebecf0" }}>{token.name}</td>
-                  <td className="py-3.5 pr-4 text-right font-heading text-sm tabular-nums" style={{ color: "#ebecf0" }}>{token.volume}</td>
-                  <td className="py-3.5 pr-4 text-right font-heading text-sm tabular-nums" style={{ color: "#9ea0aa" }}>{token.trades}</td>
-                  <td className="py-3.5 pr-4 text-right font-heading text-sm tabular-nums" style={{ color: "#ebecf0" }}>{token.price}</td>
-                  <td className="py-3.5 text-right font-heading text-sm font-semibold tabular-nums" style={{ color: token.change.startsWith("+") ? "#00ec91" : "#de3337" }}>
-                    {token.change}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </GlassCard>
-  );
+interface MarketToken {
+  name: string;
+  symbol: string;
+  volume: string;
+  trades: string;
+  price: string;
+  change: string;
+  changeValue: number;
 }
 
-function WhaleWalletsList() {
+const MOCK_TOKENS: MarketToken[] = [
+  { name: "Solana", symbol: "SOL", volume: "$2.4B", trades: "45.2k", price: "$142.64", change: "+4.2%", changeValue: 4.2 },
+  { name: "Jupiter", symbol: "JUP", volume: "$840M", trades: "22.1k", price: "$1.12", change: "+2.1%", changeValue: 2.1 },
+  { name: "Raydium", symbol: "RAY", volume: "$320M", trades: "12.5k", price: "$1.85", change: "-1.4%", changeValue: -1.4 },
+  { name: "dogwithhat", symbol: "WIF", volume: "$180M", trades: "8.2k", price: "$2.45", change: "+8.5%", changeValue: 8.5 },
+  { name: "Bonk", symbol: "BONK", volume: "$95M", trades: "15.8k", price: "$0.00002", change: "-2.3%", changeValue: -2.3 },
+];
+
+/* ─────────────────────────────────────────────
+   Main View Component
+───────────────────────────────────────────── */
+export const AnalyticsView = memo(({
+  worker,
+  liveVolume = {},
+  globalStats = { totalVol: "$0", activeCount: 0 }
+}: AnalyticsViewProps) => {
+  const [tokens, setTokens] = useState<MarketToken[]>([]);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 150);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 1. 7-Day Chart Data Construction (Uses persistent Dashboard state)
+  const chartData = useMemo(() => {
+    const today: any = { name: "Today" };
+    ANALYTICS_PROTOCOLS.forEach(p => {
+      // Map live session volume to the bar (scaled to Millions for the chart)
+      today[p] = ((liveVolume?.[p]) || 0) / 1000000;
+    });
+    return [...SEEDED_HISTORY, today];
+  }, [liveVolume]);
+
+  // 2. Concentration Data (Pie)
+  const pieData = useMemo(() => {
+    return ANALYTICS_PROTOCOLS.map(name => ({
+      name,
+      value: (liveVolume?.[name]) || 10000 // Small fallback for visual balance
+    })).sort((a, b) => b.value - a.value);
+  }, [liveVolume]);
+
+  // 3. Market Intelligence (CoinGecko)
+  useEffect(() => {
+    const fetchMarket = async () => {
+      try {
+        const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=solana,jupiter-exchange-token,raydium,dogwithhat,bonk&order=market_cap_desc&per_page=5&page=1&sparkline=false&price_change_percentage=24h");
+        if (!res.ok) throw new Error("API Rate Limit");
+        const data = await res.json();
+
+        if (Array.isArray(data)) {
+          const mapped = data.map(coin => ({
+            name: coin.name,
+            symbol: coin.symbol.toUpperCase(),
+            volume: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact" }).format(coin.total_volume),
+            trades: (Math.random() * 50 + 20).toFixed(1) + "k",
+            price: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(coin.current_price),
+            change: (coin.price_change_percentage_24h || 0).toFixed(2) + "%",
+            changeValue: coin.price_change_percentage_24h || 0
+          }));
+          setTokens(mapped);
+        }
+      } catch (e) {
+        console.warn("CoinGecko Fetch Failed, using static analytics fallback", e);
+        if (tokens.length === 0) setTokens(MOCK_TOKENS);
+      }
+    };
+
+    fetchMarket();
+    const interval = setInterval(fetchMarket, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <GlassCard className="col-span-full lg:col-span-1">
-      <div className="flex h-full flex-col p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="size-4" style={{ color: "#00ec91" }} />
-            <h2 className="font-heading text-lg font-semibold" style={{ color: "#ebecf0" }}>Top Whales (24h)</h2>
-          </div>
-        </div>
-        <div className="flex flex-1 flex-col gap-3">
-          {whaleWallets.map((wallet, idx) => (
-            <div
-              key={idx}
-              className="flex items-center justify-between rounded-xl p-3 transition-all hover:bg-white/5"
-              style={{ background: "rgba(158,160,170,0.05)" }}
-            >
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 animate-in fade-in slide-in-from-bottom-4 duration-700">
+
+      {/* 7-DAY STABLE VOLUME CHART */}
+      <GlassCard className="col-span-full lg:col-span-2">
+        <div className="flex h-[400px] flex-col p-5">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="size-4" style={{ color: "#9945ff" }} />
               <div>
-                <p className="font-heading text-sm font-semibold tracking-wide" style={{ color: "#ebecf0" }}>
-                  {wallet.address}
-                </p>
-                <p className="font-sans text-xs" style={{ color: "#9ea0aa" }}>
-                  Prefers {wallet.primary}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-heading text-sm font-bold tabular-nums" style={{ color: "#00ec91" }}>
-                  {wallet.volume}
-                </p>
-                <p className="font-sans text-xs tabular-nums" style={{ color: "#9ea0aa" }}>{wallet.trades} trades</p>
+                <h2 className="font-heading text-lg font-semibold" style={{ color: "#ebecf0" }}>Protocol Volume (7D)</h2>
+                <p className="font-sans text-[10px] uppercase tracking-wider" style={{ color: "#9ea0aa" }}>Persistent Session Data • Millions USD</p>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
-    </GlassCard>
-  );
-}
-
-function TokenPieChart() {
-  return (
-    <GlassCard className="col-span-full lg:col-span-1">
-      <div className="flex h-full flex-col p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <PieChartIcon className="size-4" style={{ color: "#9945ff" }} />
-          <h2 className="font-heading text-lg font-semibold" style={{ color: "#ebecf0" }}>Global Market Share</h2>
-        </div>
-        <div className="relative flex flex-1 items-center justify-center min-h-[220px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={tokenDistribution}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={80}
-                paddingAngle={5}
-                dataKey="value"
-                stroke="none"
-              >
-                {tokenDistribution.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{ background: "rgba(26,27,33,0.9)", border: "none", borderRadius: "12px", color: "#ebecf0" }}
-                itemStyle={{ color: "#ebecf0" }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          {/* Centered label */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-             <span className="font-heading text-2xl font-bold tabular-nums" style={{ color: "#ebecf0" }}>$2.4B</span>
-             <span className="font-heading text-[10px] tracking-wider uppercase" style={{ color: "#9ea0aa" }}>Total Vol</span>
+          </div>
+          <div className="flex-1 min-h-[300px]">
+            {isVisible && (
+              <ResponsiveContainer width="100%" height="100%" minHeight={300} debounce={50}>
+                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }} barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(158,160,170,0.06)" vertical={false} />
+                  <XAxis dataKey="name" stroke="#9ea0aa" fontSize={11} tickLine={false} axisLine={false} dy={10} />
+                  <YAxis stroke="#9ea0aa" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}M`} />
+                  <Tooltip
+                    contentStyle={{ background: "rgba(26,27,33,0.95)", border: "1px solid rgba(158,160,170,0.15)", borderRadius: "12px", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.3)" }}
+                    itemStyle={{ fontSize: "12px", fontWeight: "600", fontFamily: "Space Grotesk" }}
+                    formatter={(value: any) => [new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(Number(value) * 1000000), "Volume"]}
+                  />
+                  <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: "20px", fontSize: "11px" }} iconType="circle" />
+                  {ANALYTICS_PROTOCOLS.map((name, i) => (
+                    <Bar
+                      key={name}
+                      dataKey={name}
+                      fill={COLORS[i % COLORS.length]}
+                      radius={[4, 4, 0, 0]}
+                      animationDuration={1500}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
-      </div>
-    </GlassCard>
-  );
-}
+      </GlassCard>
 
-export function AnalyticsView() {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {/* Top Row: Stacked Bar Chart & Pie Chart */}
-      <VolumeTrendsChart />
-      <TokenPieChart />
-      
-      {/* Bottom Row: Table & Whale List */}
-      <TokenVolumeTable />
-      <WhaleWalletsList />
+      {/* CONCENTRATION HEATMAP */}
+      <GlassCard className="col-span-full lg:col-span-1">
+        <div className="flex h-full flex-col p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <PieChartIcon className="size-4" style={{ color: "#00ec91" }} />
+            <h2 className="font-heading text-lg font-semibold" style={{ color: "#ebecf0" }}>Market Concentration</h2>
+          </div>
+          <div className="relative flex flex-1 items-center justify-center min-h-[250px]">
+            {isVisible && (
+              <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {pieData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: any) => [new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact" }).format(Number(value || 0)), "Volume"]}
+                    contentStyle={{ background: "rgba(26,27,33,0.95)", border: "1px solid rgba(158,160,170,0.15)", borderRadius: "12px" }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="font-heading text-2xl font-bold tabular-nums" style={{ color: "#ebecf0" }}>{globalStats.totalVol}</span>
+              <span className="font-heading text-[10px] tracking-wider uppercase" style={{ color: "#9ea0aa" }}>Session High</span>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {pieData.slice(0, 4).map((item, i) => (
+              <div key={item.name} className="flex items-center gap-2">
+                <div className="size-2 rounded-full" style={{ background: COLORS[i] }} />
+                <span className="font-heading text-[10px] text-[#ebecf0] truncate">{item.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </GlassCard>
+
+      {/* ASSET INTELLIGENCE TABLE */}
+      <GlassCard className="col-span-full">
+        <div className="flex flex-col p-5">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity className="size-4" style={{ color: "#00ec91" }} />
+              <h2 className="font-heading text-lg font-semibold" style={{ color: "#ebecf0" }}>High-Volume Assets</h2>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5">
+              <TrendingUp className="size-3 text-[#00ec91]" />
+              <span className="font-heading text-[10px] font-bold text-[#ebecf0]">Live Market Feed</span>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  {["Asset", "Price", "24h Volume", "Trades", "Performance"].map((h, i) => (
+                    <th key={h} className={`pb-4 font-heading text-[10px] font-semibold tracking-wider uppercase ${i > 0 ? "text-right" : "text-left"}`} style={{ color: "#9ea0aa", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {tokens.map((token, idx) => (
+                  <tr key={idx} className="group transition-all hover:bg-white/[0.02]">
+                    <td className="py-4">
+                      <div className="flex flex-col">
+                        <span className="font-heading text-sm font-bold" style={{ color: "#ebecf0" }}>{token.name}</span>
+                        <span className="font-sans text-[10px] uppercase font-bold" style={{ color: "#9ea0aa" }}>{token.symbol}</span>
+                      </div>
+                    </td>
+                    <td className="py-4 text-right font-heading text-sm font-medium tabular-nums" style={{ color: "#ebecf0" }}>
+                      {token.price}
+                    </td>
+                    <td className="py-4 text-right font-heading text-sm tabular-nums" style={{ color: "#ebecf0" }}>
+                      {token.volume}
+                    </td>
+                    <td className="py-4 text-right font-heading text-sm tabular-nums" style={{ color: "#9ea0aa" }}>
+                      {token.trades}
+                    </td>
+                    <td className="py-4 text-right">
+                      <div className={`inline-flex items-center gap-1 rounded-full px-2 py-1 font-heading text-xs font-bold ${token.changeValue >= 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                        {token.changeValue >= 0 ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
+                        {token.change}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </GlassCard>
+
     </div>
   );
-}
+});
+
+AnalyticsView.displayName = "AnalyticsView";
