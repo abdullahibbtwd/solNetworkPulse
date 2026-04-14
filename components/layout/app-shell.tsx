@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -274,11 +274,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-full" style={{ background: "#121318" }}>
-      <Sidebar 
-         open={sidebarOpen} 
-         onClose={() => setSidebarOpen(false)} 
-         onOpenNotifications={() => setNotificationsOpen(true)} 
-      />
+      <Suspense fallback={null}>
+        <Sidebar 
+           open={sidebarOpen} 
+           onClose={() => setSidebarOpen(false)} 
+           onOpenNotifications={() => setNotificationsOpen(true)} 
+        />
+      </Suspense>
       <NotificationsModal 
          open={notificationsOpen} 
          onClose={() => setNotificationsOpen(false)} 
@@ -286,10 +288,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6">
         <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-4">
-          <TopBar 
-             onMenuOpen={() => setSidebarOpen(true)} 
-             onOpenNotifications={() => setNotificationsOpen(true)} 
-          />
+          <Suspense fallback={
+            <div className="flex h-16 w-full items-center justify-between rounded-2xl bg-[#1a1b21]/80 px-5 backdrop-blur-md">
+              <div className="flex items-center gap-3">
+                <div className="size-7 rounded-lg bg-white/5 animate-pulse" />
+                <div className="h-4 w-32 rounded-lg bg-white/5 animate-pulse" />
+              </div>
+            </div>
+          }>
+            <TopBar 
+               onMenuOpen={() => setSidebarOpen(true)} 
+               onOpenNotifications={() => setNotificationsOpen(true)} 
+            />
+          </Suspense>
           {children}
         </div>
       </main>
