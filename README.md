@@ -91,8 +91,8 @@ The system focuses on:
 ### **Installation**
 
 ```bash
-git clone <repo-url>
-cd <repo>
+git clone <https://github.com/abdullahibbtwd/solNetworkPulse.git>
+cd solNetworkPulse
 npm install
 ```
 
@@ -130,6 +130,3 @@ Designed to handle high-throughput, real-time blockchain data streams while main
 
 This project demonstrates the design and implementation of a real-time event processing system capable of handling high-frequency blockchain data, with a focus on performance, concurrency, and data consistency.
 
-
-If you want, next step I can help you:
-👉 Add **1–2 GitHub screenshots + captions** that make this even more convincing to recruiters.
